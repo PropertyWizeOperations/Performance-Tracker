@@ -3,603 +3,537 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PropertyWize EPM Scorecard v30.0 (Smart Coach)</title>
+    <title>PropertyWize Performance Tracker</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    </script>
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
         
-        @media print {
-            @page { margin: 0.5cm; size: portrait; }
-            body { background-color: white; -webkit-print-color-adjust: exact; }
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            input, select, textarea { border: none !important; background: transparent !important; resize: none; padding: 0; }
-            input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-            canvas { max-width: 100% !important; height: auto !important; }
-            .page-break { break-inside: avoid; }
+        .logo-placeholder {
+            width: 140px;
+            height: 35px;
+            background-color: #1e293b;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 11px;
+            border-radius: 4px;
         }
 
-        .check-label:hover { background-color: #eff6ff; }
-        .check-label input:checked + span { color: #dc2626; font-weight: 700; }
+        .badge-pass { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .badge-fail { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .badge-wait { background-color: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+
+        /* Form styling */
+        input[type="text"], input[type="number"], input[type="date"], select, textarea {
+            background: transparent; border: 1px solid #cbd5e1; padding: 2px 6px; border-radius: 4px; font-size: 11px;
+        }
         
-        /* Badges */
-        .badge-wait { background-color: #e5e7eb; color: #374151; }
-        .badge-pass { background-color: #dcfce7; color: #15803d; }
-        .badge-fail { background-color: #fee2e2; color: #b91c1c; }
+        /* Fix for Year Input Visibility */
+        #repYear, #repMonth, #roleSelect, #staffSelect {
+            background-color: white !important;
+            color: black !important;
+        }
+
+        .check-group label { display: flex; align-items: center; gap: 4px; font-size: 9px; color: #475569; cursor: pointer; }
+        .check-group input:checked + span { color: #dc2626; font-weight: 700; }
+
+        /* Dashboard Table Styling */
+        .db-table th { background-color: #f1f5f9; color: #475569; font-size: 10px; text-transform: uppercase; padding: 10px; text-align: left; }
+        .db-table td { border-bottom: 1px solid #e2e8f0; padding: 10px; font-size: 12px; }
+        .db-row:hover { background-color: #f8fafc; }
     </style>
 </head>
-<body class="pb-20">
+<body class="pb-20 text-slate-800">
 
-    <div class="bg-slate-900 text-white p-3 shadow-lg mb-6 no-print sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
-            <div class="flex items-center gap-2">
-                <i class="fas fa-user-graduate text-green-400 text-xl"></i>
-                <h1 class="font-bold text-lg">EPM Scorecard v30.0</h1>
+    <div class="bg-slate-900 text-white p-3 shadow-xl sticky top-0 z-50" data-html2canvas-ignore="true">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 p-2 rounded"><i class="fas fa-sliders-h text-white"></i></div>
+                <div><h1 class="font-bold text-sm">Tracker Controls</h1></div>
             </div>
             
-            <div class="flex flex-wrap gap-2 items-end">
-                <div class="bg-slate-800 p-1 rounded flex gap-1">
-                    <div>
-                        <label class="text-[9px] uppercase font-bold text-slate-400 block">Month</label>
-                        <select id="repMonth" onchange="updateHeader()" class="w-16 text-xs text-black rounded h-6">
-                            <option value="October" selected>Oct</option><option value="November">Nov</option><option value="December">Dec</option>
-                            <option value="January">Jan</option><option value="February">Feb</option><option value="March">Mar</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-[9px] uppercase font-bold text-slate-400 block">Year</label>
-                        <input type="number" id="repYear" value="2025" onchange="updateHeader()" class="w-14 text-xs text-black rounded h-6 px-1">
-                    </div>
+            <div class="flex flex-wrap gap-2 items-center">
+                <div class="flex bg-slate-800 rounded p-1 mr-4">
+                    <button onclick="switchView('scorecard')" id="btnScorecard" class="px-3 py-1 text-xs font-bold rounded bg-blue-600 text-white">Scorecard</button>
+                    <button onclick="switchView('dashboard')" id="btnDashboard" class="px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white">Dashboard</button>
                 </div>
 
-                <div class="bg-slate-800 p-1 rounded">
-                    <label class="text-[9px] uppercase font-bold text-slate-400 block">Role</label>
-                    <select id="roleSelect" onchange="runCalc()" class="w-28 text-xs text-black rounded h-6">
-                        </select>
-                </div>
-
-                <div class="bg-slate-800 p-1 rounded">
-                    <label class="text-[9px] uppercase font-bold text-slate-400 block">Hourly ($)</label>
-                    <input type="number" id="hourlyRate" value="8.00" step="0.50" onchange="runCalc()" class="w-14 text-xs text-black rounded h-6 px-1">
-                </div>
-
-                <div class="bg-slate-800 p-1 rounded">
-                    <label class="text-[9px] uppercase font-bold text-slate-400 block">Upload Report</label>
-                    <input type="file" id="csvFile" accept=".csv, .xlsx" class="w-36 text-[9px] text-slate-300 file:py-0 file:px-2 file:border-0 file:bg-blue-600 file:text-white file:rounded h-6"/>
-                </div>
-
-                <div class="bg-slate-800 p-1 rounded relative">
-                    <label class="text-[9px] uppercase font-bold text-slate-400 block">Select Staff</label>
-                    <select id="staffSelect" onchange="loadStaffData()" class="w-40 text-xs text-black rounded h-6 disabled:bg-gray-300" disabled>
-                        <option value="">(Upload first)</option>
+                <div class="flex gap-1">
+                    <select id="repMonth" onchange="updateHeader()" class="h-7 w-24 border-none rounded text-xs">
+                        <option value="January" selected>January</option><option value="February">February</option>
+                        <option value="March">March</option><option value="April">April</option><option value="May">May</option>
+                        <option value="June">June</option><option value="July">July</option><option value="August">August</option>
+                        <option value="September">September</option><option value="October">October</option>
+                        <option value="November">November</option><option value="December">December</option>
                     </select>
+                    <input type="number" id="repYear" value="2026" onchange="updateHeader()" class="h-7 w-16 border-none rounded text-center text-xs">
                 </div>
+                <select id="roleSelect" onchange="runCalc()" class="h-7 w-28 border-none rounded text-xs"></select>
+                <input type="file" id="multiUpload" multiple accept=".csv, .xlsx, .pdf" class="text-slate-300 text-[10px] w-48"/>
+                <select id="staffSelect" onchange="loadStaffData()" class="h-7 w-36 border-none rounded text-xs" disabled>
+                    <option value="">(Upload CSV)</option>
+                </select>
                 
-                <button onclick="openEmailModal()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded font-bold text-xs h-8 flex items-center gap-1">
-                    <i class="fas fa-envelope"></i> Email
+                <div class="h-6 w-px bg-slate-700 mx-2"></div>
+
+                <button onclick="saveRecord()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded font-bold text-xs h-7 flex items-center gap-2">
+                    <i class="fas fa-save"></i> Save to DB
                 </button>
-                <button onclick="window.print()" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded font-bold text-xs h-8 flex items-center gap-1">
-                    <i class="fas fa-print"></i> PDF
+                <button onclick="savePDF()" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded font-bold text-xs h-7 flex items-center gap-2">
+                    <i class="fas fa-file-pdf"></i> PDF
                 </button>
             </div>
         </div>
     </div>
 
-    <div class="max-w-4xl mx-auto bg-white shadow-lg rounded-xl overflow-hidden border border-slate-200" id="scorecard">
-        
-        <div class="bg-slate-50 p-8 border-b border-slate-200 flex justify-between items-start">
-            <div>
-                <h2 class="text-2xl font-bold text-slate-800">Performance Scorecard</h2>
-                <p class="text-sm text-slate-500 mt-1">PropertyWize Management, LLC</p>
-            </div>
-            <div class="text-right">
-                <div class="mb-1">
-                    <span class="text-xs font-bold text-slate-400 uppercase">Employee</span>
-                    <input type="text" id="dispName" class="block text-right font-bold text-slate-800 bg-transparent border-b border-slate-300 focus:outline-none w-48" value="Select Staff" placeholder="Name">
-                </div>
-                <div>
-                    <span class="text-xs font-bold text-slate-400 uppercase">Period</span>
-                    <p class="font-bold text-slate-800" id="dispPeriod">October 2025</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="p-8 pb-4 border-b border-slate-100">
-            <h3 class="text-sm font-bold text-slate-600 uppercase mb-4">Task Overview</h3>
-            <div class="flex flex-col md:flex-row gap-8 items-center">
-                <div class="w-full md:w-1/2 h-40 relative">
-                    <canvas id="taskChart"></canvas>
-                </div>
-                <div class="w-full md:w-1/2 grid grid-cols-2 gap-4">
-                    <div class="bg-blue-50 p-2 rounded text-center border border-blue-100">
-                        <span class="text-[10px] text-blue-500 uppercase font-bold">Total Tasks</span>
-                        <div class="text-xl font-bold text-blue-900" id="chartTotal">0</div>
-                    </div>
-                    <div class="bg-red-50 p-2 rounded text-center border border-red-100">
-                        <span class="text-[10px] text-red-500 uppercase font-bold">Overdue</span>
-                        <div class="text-xl font-bold text-red-900" id="chartOverdue">0</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="p-6 border-b border-slate-100 bg-blue-50">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-sm font-bold text-blue-800 uppercase flex items-center">
-                    <i class="fas fa-coins mr-2"></i> Quarterly Bonus Tracker
-                </h3>
-            </div>
-            <div class="grid grid-cols-4 gap-4 text-center">
-                <div class="bg-white p-3 rounded border border-blue-200 shadow-sm">
-                    <label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Month 1 Earned</label>
-                    <div class="flex items-center justify-center">
-                        <span class="text-gray-400 text-sm mr-1">$</span>
-                        <input type="number" id="bonusM1" value="0" class="w-16 font-bold text-slate-700 text-center border-b focus:outline-none" onchange="runCalc()">
-                    </div>
-                </div>
-                <div class="bg-white p-3 rounded border border-blue-200 shadow-sm">
-                    <label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Month 2 Earned</label>
-                    <div class="flex items-center justify-center">
-                        <span class="text-gray-400 text-sm mr-1">$</span>
-                        <input type="number" id="bonusM2" value="0" class="w-16 font-bold text-slate-700 text-center border-b focus:outline-none" onchange="runCalc()">
-                    </div>
-                </div>
-                <div class="bg-white p-3 rounded border ring-2 ring-green-400 shadow-sm text-center">
-                    <label class="text-[9px] font-bold text-green-600 uppercase block mb-1">Current Month</label>
-                    <div class="text-xl font-bold text-green-700" id="dispBonus">$0.00</div>
-                    <div class="text-[9px] text-green-600"><span id="pointsMet">0</span>/4 Met</div>
-                </div>
-                <div class="bg-slate-800 p-3 rounded shadow-sm text-center text-white flex flex-col justify-center">
-                    <label class="text-[9px] font-bold text-yellow-400 uppercase block mb-1">Quarterly Total</label>
-                    <div class="text-2xl font-bold text-white" id="totalQuarterlyPayout">$0.00</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="p-8">
-            <h3 class="text-lg font-bold text-slate-800 mb-4 border-l-4 border-blue-500 pl-3">Metrics Breakdown</h3>
+    <div id="viewScorecard" class="block">
+        <div id="printArea" class="max-w-[816px] mx-auto bg-white shadow-2xl my-4 relative p-0 overflow-hidden">
             
-            <div class="mb-6 border rounded-lg overflow-hidden page-break">
-                <div class="flex justify-between items-center bg-slate-50 p-3 border-b">
-                    <div>
-                        <h4 class="font-bold text-slate-800 text-sm">1. Production Efficiency</h4>
-                        <p class="text-[10px] text-slate-500">Target: > <span id="tphTargetDisplay" class="font-bold text-blue-600">1.5</span> TPH</p>
-                    </div>
-                    <span id="badgeTPH" class="badge wait">WAITING</span>
+            <div class="bg-slate-800 px-6 py-5 text-white flex justify-between items-center border-b-4 border-blue-500">
+                <div>
+                    <div class="logo-placeholder mb-2"><i class="fas fa-building mr-2"></i> PROPERTYWIZE</div>
+                    <h2 class="text-lg font-light tracking-wide">PERFORMANCE <span class="font-bold">SCORECARD</span></h2>
                 </div>
-                <div class="p-3 flex items-center gap-4">
-                    <div class="w-1/2">
-                        <span class="text-[10px] text-slate-400 uppercase font-bold">Result</span>
-                        <div class="text-2xl font-bold text-slate-800"><span id="resTPH">0.00</span> TPH</div>
+                <div class="text-right">
+                    <div class="text-[9px] font-bold text-blue-400 uppercase">Evaluation Period</div>
+                    <div id="dispPeriod" class="text-lg font-bold leading-tight">JANUARY 2026</div>
+                    <div class="mt-1">
+                        <input type="text" id="dispName" class="text-right font-bold text-base bg-transparent border-b border-slate-600 text-white w-56 focus:border-blue-400 outline-none p-0" value="Select Staff Member">
                     </div>
-                    <div class="w-1/2 no-print bg-yellow-50 p-2 rounded border border-yellow-100">
-                        <span class="text-[9px] text-slate-500 uppercase font-bold block mb-1">Manual Override</span>
-                        <div class="flex gap-2">
-                            <input type="number" id="inpTasks" class="w-full p-1 text-xs border rounded" placeholder="Tasks" onchange="runCalc()">
-                            <input type="number" id="inpHours" class="w-full p-1 text-xs border rounded" value="160" onchange="runCalc()">
+                </div>
+            </div>
+
+            <div class="px-6 py-5">
+                
+                <div class="flex gap-4 mb-4 h-28">
+                    <div class="w-1/2 border border-slate-200 rounded-lg overflow-hidden flex flex-col">
+                        <div class="bg-slate-50 px-3 py-1 border-b border-slate-200 flex justify-between items-center">
+                            <h3 class="text-[9px] font-bold text-slate-700 uppercase"><i class="fas fa-clipboard-check mr-1"></i> Audit Compliance</h3>
+                            <span id="badgeAudit" class="px-2 py-0.5 rounded text-[8px] font-bold badge-wait">PENDING</span>
+                        </div>
+                        <div class="p-2 grid grid-cols-3 gap-2 flex-grow items-center">
+                            <div class="text-center border-r border-slate-100">
+                                <label class="text-[8px] font-bold text-slate-400 uppercase block">Total</label>
+                                <input type="number" id="totalAudits" value="0" onchange="runCalc()" class="w-12 text-center font-bold text-sm border-b">
+                            </div>
+                            <div class="text-center border-r border-slate-100">
+                                <label class="text-[8px] font-bold text-slate-400 uppercase block">Correct</label>
+                                <input type="number" id="correctAudits" value="0" onchange="runCalc()" class="w-12 text-center font-bold text-sm border-b">
+                            </div>
+                            <div class="text-center">
+                                <label class="text-[8px] font-bold text-slate-400 uppercase block">Accuracy</label>
+                                <div id="auditPct" class="text-base font-black text-slate-800">0%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="w-1/2 bg-slate-900 rounded-lg p-3 text-white flex flex-col justify-center text-center relative shadow-md">
+                        <div class="absolute top-2 left-3 text-[8px] text-slate-400 font-bold uppercase">Incentive Earned</div>
+                        <div id="dispBonus" class="text-3xl font-black text-yellow-400 my-1">$0.00</div>
+                        <div class="text-[9px] text-slate-300"><span id="pointsMet">0</span> of 4 Standards Met</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    
+                    <div class="border border-slate-200 rounded-lg p-3 relative">
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="text-[11px] font-bold text-slate-700">1. Production Efficiency</h4>
+                            <span id="badgeTPH" class="text-[8px] px-2 py-0.5 rounded font-bold badge-wait">WAITING</span>
+                        </div>
+                        <div class="text-[9px] text-slate-500 mb-1">Target: > <span id="tphTargetDisplay">1.5</span> TPH</div>
+                        <div class="flex justify-between items-end">
+                            <div class="text-xl font-black text-slate-800 leading-none"><span id="resTPH">0.00</span> <span class="text-[9px] text-slate-400 font-bold">TPH</span></div>
+                            <div class="text-right flex gap-2">
+                                <div class="flex gap-1 items-center">
+                                    <span class="text-[8px] uppercase text-slate-400">Tasks:</span>
+                                    <input type="number" id="inpTasks" onchange="runCalc()" class="w-10 text-right font-bold text-[9px] p-0 border-none bg-slate-50">
+                                </div>
+                                <div class="flex gap-1 items-center">
+                                    <span class="text-[8px] uppercase text-slate-400">Hrs:</span>
+                                    <input type="number" id="inpHours" value="160" onchange="runCalc()" class="w-8 text-right font-bold text-[9px] p-0 border-none bg-slate-50">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-lg p-3 relative">
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="text-[11px] font-bold text-slate-700">2. Timeliness</h4>
+                            <span id="badgeTime" class="text-[8px] px-2 py-0.5 rounded font-bold badge-wait">WAITING</span>
+                        </div>
+                        <div class="text-[9px] text-slate-500 mb-1">Target: 99% On-Time</div>
+                        <div class="flex justify-between items-end">
+                            <div class="text-xl font-black text-slate-800 leading-none"><span id="resTime">100</span><span class="text-xs">%</span></div>
+                            <div class="bg-red-50 px-2 py-0.5 rounded border border-red-100 flex items-center gap-1">
+                                <span class="text-[8px] uppercase text-red-400 font-bold">Overdue:</span>
+                                <input type="number" id="inpLate" value="0" onchange="runCalc()" class="w-10 text-right font-bold text-sm text-red-600 bg-transparent border-none p-0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-lg p-3">
+                        <h4 class="text-[9px] font-bold text-slate-700 uppercase mb-2 border-b pb-1">3. Quality Control</h4>
+                        <div class="check-group grid grid-cols-2 gap-y-1">
+                            <label><input type="checkbox" class="q-check" onchange="runCalc()"> <span>Recall / Rework</span></label>
+                            <label><input type="checkbox" class="q-check" onchange="runCalc()"> <span>Data Entry Error</span></label>
+                            <label><input type="checkbox" class="q-check" onchange="runCalc()"> <span>Missed Detail</span></label>
+                            <label><input type="checkbox" class="q-check" onchange="runCalc()"> <span>Wrong Status</span></label>
+                        </div>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-lg p-3">
+                        <h4 class="text-[9px] font-bold text-slate-700 uppercase mb-2 border-b pb-1">4. Professionalism</h4>
+                        <div class="check-group grid grid-cols-2 gap-y-1">
+                            <label><input type="checkbox" class="b-check" onchange="runCalc()"> <span>Communication</span></label>
+                            <label><input type="checkbox" class="b-check" onchange="runCalc()"> <span>Policy Violation</span></label>
+                            <label><input type="checkbox" class="b-check" onchange="runCalc()"> <span>Insubordination</span></label>
+                            <label><input type="checkbox" class="b-check" onchange="runCalc()"> <span>Attendance</span></label>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="mb-6 border rounded-lg overflow-hidden page-break">
-                <div class="flex justify-between items-center bg-slate-50 p-3 border-b">
+                <div class="mb-4">
+                    <h3 class="text-[9px] font-bold text-slate-400 uppercase mb-1">Manager's Detailed Feedback</h3>
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-[10px] text-slate-700 leading-relaxed shadow-sm min-h-[70px]" id="scriptBox">
+                        <p class="italic text-slate-400">Upload data to generate feedback...</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-8 pt-4 border-t border-slate-200">
                     <div>
-                        <h4 class="font-bold text-slate-800 text-sm">2. Timeliness</h4>
-                        <p class="text-[10px] text-slate-500">Target: 99% On-Time</p>
+                        <input type="text" id="staffSig" class="w-full border-b border-slate-300 mb-1 text-xs font-serif italic text-slate-600 bg-transparent" placeholder="Sign here">
+                        <div class="flex justify-between items-center">
+                            <p class="text-[8px] font-bold text-slate-400 uppercase">Staff Member Signature</p>
+                            <input type="date" id="staffDate" class="text-[8px] border-none bg-transparent text-slate-400 p-0">
+                        </div>
                     </div>
-                    <span id="badgeTime" class="badge wait">WAITING</span>
-                </div>
-                <div class="p-3 flex items-center gap-4">
-                    <div class="w-1/2">
-                        <span class="text-[10px] text-slate-400 uppercase font-bold">Result</span>
-                        <div class="text-2xl font-bold text-slate-800"><span id="resTime">100.0</span>%</div>
-                        <span class="text-[10px] text-red-500 font-bold"><span id="resLate">0</span> Overdue Tasks</span>
-                    </div>
-                    <div class="w-1/2 no-print bg-yellow-50 p-2 rounded border border-yellow-100">
-                        <span class="text-[9px] text-slate-500 uppercase font-bold block mb-1">Manual Override</span>
-                        <input type="number" id="inpLate" class="w-full p-1 text-xs border rounded" placeholder="Late Count" value="0" onchange="runCalc()">
-                        <span id="debugLate" class="text-[8px] text-slate-400 block mt-1"></span>
+                    <div>
+                        <input type="text" id="opsSig" class="w-full border-b border-slate-300 mb-1 text-xs font-serif italic text-slate-600 bg-transparent" placeholder="Sign here">
+                        <div class="flex justify-between items-center">
+                            <p class="text-[8px] font-bold text-slate-400 uppercase">Manager Signature</p>
+                            <input type="date" id="opsDate" class="text-[8px] border-none bg-transparent text-slate-400 p-0">
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="mb-6 border rounded-lg overflow-hidden page-break">
-                <div class="flex justify-between items-center bg-slate-50 p-3 border-b">
-                    <h4 class="font-bold text-slate-800 text-sm">3. Quality Control (Zero Errors)</h4>
-                    <span id="badgeQual" class="badge wait">WAITING</span>
-                </div>
-                <div class="p-3 bg-white">
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="check-label flex items-center space-x-2 text-xs p-1 rounded cursor-pointer">
-                            <input type="checkbox" class="q-check" onchange="runCalc()"> <span>Recall/Rework</span>
-                        </label>
-                        <label class="check-label flex items-center space-x-2 text-xs p-1 rounded cursor-pointer">
-                            <input type="checkbox" class="q-check" onchange="runCalc()"> <span>Data Entry Error</span>
-                        </label>
-                        <label class="check-label flex items-center space-x-2 text-xs p-1 rounded cursor-pointer">
-                            <input type="checkbox" class="q-check" onchange="runCalc()"> <span>Missed Details</span>
-                        </label>
-                        <label class="check-label flex items-center space-x-2 text-xs p-1 rounded cursor-pointer">
-                            <input type="checkbox" class="q-check" onchange="runCalc()"> <span>Wrong Status</span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mb-6 border rounded-lg overflow-hidden page-break">
-                <div class="flex justify-between items-center bg-slate-50 p-3 border-b">
-                    <h4 class="font-bold text-slate-800 text-sm">4. Professionalism (Zero Issues)</h4>
-                    <span id="badgeBeh" class="badge wait">WAITING</span>
-                </div>
-                <div class="p-3 bg-white">
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="check-label flex items-center space-x-2 text-xs p-1 rounded cursor-pointer">
-                            <input type="checkbox" class="b-check" onchange="runCalc()"> <span>Communication</span>
-                        </label>
-                        <label class="check-label flex items-center space-x-2 text-xs p-1 rounded cursor-pointer">
-                            <input type="checkbox" class="b-check" onchange="runCalc()"> <span>Policy Violation</span>
-                        </label>
-                        <label class="check-label flex items-center space-x-2 text-xs p-1 rounded cursor-pointer">
-                            <input type="checkbox" class="b-check" onchange="runCalc()"> <span>Insubordination</span>
-                        </label>
-                        <label class="check-label flex items-center space-x-2 text-xs p-1 rounded cursor-pointer">
-                            <input type="checkbox" class="b-check" onchange="runCalc()"> <span>Attendance</span>
-                        </label>
-                    </div>
-                </div>
             </div>
             
-            <div class="mt-8 bg-white p-6 rounded-lg border border-slate-200 shadow-sm page-break">
-                <h3 class="text-sm font-bold text-slate-800 uppercase mb-3 border-b pb-2 flex items-center">
-                    <i class="fas fa-comment-dots text-blue-500 mr-2"></i> Manager's Coaching & Action Plan
-                </h3>
-                <div id="scriptBox" class="text-sm text-slate-600 leading-relaxed">
-                    </div>
+            <div class="absolute bottom-0 w-full bg-slate-100 py-2 text-center text-[8px] text-slate-400 border-t border-slate-200">
+                PropertyWize Management, LLC • Confidential Performance Record • Generated Electronically
             </div>
-
-            <div class="mt-12 border-t-2 border-slate-300 pt-6 page-break">
-                <h3 class="text-sm font-bold text-slate-800 uppercase mb-2">Employee Acknowledgement</h3>
-                <p class="text-[10px] text-slate-500 mb-8 text-justify">
-                    I acknowledge that I have received this performance review and that I have had an opportunity to discuss it with my manager. My signature does not necessarily indicate agreement with the specific ratings or comments, but only that I have been made aware of my performance status.
-                </p>
-                <div class="grid grid-cols-2 gap-12">
-                    <div>
-                        <div class="border-b border-slate-400 h-8"></div>
-                        <p class="text-[10px] font-bold text-slate-400 mt-2 uppercase">Employee Signature / Date</p>
-                    </div>
-                    <div>
-                        <div class="border-b border-slate-400 h-8"></div>
-                        <p class="text-[10px] font-bold text-slate-400 mt-2 uppercase">Manager Signature / Date</p>
-                    </div>
-                </div>
-            </div>
-
         </div>
     </div>
 
-    <div id="emailModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white w-full max-w-2xl rounded shadow-lg p-6">
-            <div class="flex justify-between items-center mb-4 border-b pb-2">
-                <h3 class="font-bold text-lg text-blue-600">Incentive Bonus Email</h3>
-                <button onclick="document.getElementById('emailModal').classList.add('hidden')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times"></i></button>
+    <div id="viewDashboard" class="hidden max-w-6xl mx-auto mt-8 px-4">
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="bg-slate-800 p-4 text-white flex justify-between items-center">
+                <h2 class="text-lg font-bold"><i class="fas fa-database mr-2"></i> Completed Scorecards Database</h2>
+                <button onclick="clearDashboard()" class="text-xs text-red-300 hover:text-red-100 underline">Clear All</button>
             </div>
-            <label class="block text-xs font-bold uppercase mb-1">Subject Line</label>
-            <input type="text" id="emailSubject" class="w-full p-2 border rounded bg-gray-50 text-sm font-bold text-slate-700" readonly>
-            <label class="block text-xs font-bold uppercase mb-1 mt-4">Email Body</label>
-            <textarea id="emailText" class="w-full h-80 p-3 border rounded bg-gray-50 text-sm font-mono leading-relaxed"></textarea>
-            <div class="flex justify-end gap-2 mt-4">
-                <button onclick="copyEmail()" class="px-4 py-2 bg-blue-600 text-white rounded text-sm font-bold hover:bg-blue-500">Copy Text</button>
+            <div class="p-0 overflow-x-auto">
+                <table class="w-full db-table">
+                    <thead>
+                        <tr>
+                            <th>Date Saved</th>
+                            <th>Staff Member</th>
+                            <th>Period</th>
+                            <th>TPH</th>
+                            <th>Time %</th>
+                            <th>Bonus</th>
+                            <th>Signed By Staff?</th>
+                            <th>Signed By Mgr?</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dashboardBody">
+                        </tbody>
+                </table>
+                <div id="emptyMsg" class="p-8 text-center text-slate-400 text-sm hidden">No scorecards saved yet.</div>
             </div>
         </div>
     </div>
 
     <script>
-        // --- 1. CONFIGURATION & TIPS ---
-        const STANDARDS = {
-            "Finance": { tph: 1.5 }, "Leasing": { tph: 3.0 }, "Maintenance": { tph: 2.0 }, "Delinquency": { tph: 3.0 }, "Miscellaneous": { tph: 3.0 }
-        };
+        const STANDARDS = { "Finance": 1.5, "Leasing": 3.0, "Maintenance": 2.0, "Delinquency": 3.0 };
+        let globalTasks = [];
 
-        // ROLE-SPECIFIC TIPS
-        const TIPS = {
-            "Finance": {
-                prod: "Focus on 'Batch Processing' (e.g. 9am Owner Draws).",
-                time: "Sort tasks by 'Due Date' daily. Set reminders 3 days before deadlines.",
-                qual: "Read Ledger Balances out loud before saving to prevent data entry errors."
-            },
-            "Leasing": {
-                prod: "Maintain volume by using the Application Checklist for every applicant.",
-                time: "Keep listing descriptions accurate and active. Update Rent Prices immediately.",
-                qual: "Verify Rent Price & Description against Owner Agreement. Do not miss any vetting steps."
-            },
-            "Maintenance": {
-                prod: "Use the 'Map' view to bundle work orders for vendors.",
-                time: "Filter by 'Status: In Progress' daily at 8:30 AM. Call vendors after 48hrs.",
-                qual: "Require a Photo of Completed Repair before closing tasks."
-            },
-            "Delinquency": {
-                prod: "Use bulk-actions for Late Fees on the 6th.",
-                time: "Legal deadlines are strict. Internal deadline should be 2 days prior.",
-                qual: "Triple-check 'Total Balance Due' before filing court documents."
-            },
-            "Miscellaneous": {
-                prod: "Batch similar administrative tasks.",
-                time: "Clear your queue daily.",
-                qual: "Review your work against the SOP checklist."
-            }
-        };
-
-        let rawData = [];
-        let summaryOverdue = 0;
-        let taskChart = null;
-
-        // --- 2. INIT ---
         window.onload = () => {
             const roleSel = document.getElementById('roleSelect');
-            Object.keys(STANDARDS).forEach(role => {
+            Object.keys(STANDARDS).forEach(role => { 
                 const opt = document.createElement('option');
                 opt.value = role; opt.innerText = role;
-                roleSel.appendChild(opt);
+                roleSel.appendChild(opt); 
             });
             updateHeader();
-            initChart();
-            runCalc(); 
+            loadDashboard(); // Init dashboard
         };
 
-        function updateHeader() {
+        // --- VIEW SWITCHER ---
+        function switchView(view) {
+            document.getElementById('viewScorecard').classList.toggle('hidden', view !== 'scorecard');
+            document.getElementById('viewDashboard').classList.toggle('hidden', view !== 'dashboard');
+            
+            // Update Buttons
+            const btnScore = document.getElementById('btnScorecard');
+            const btnDash = document.getElementById('btnDashboard');
+            if(view === 'scorecard') {
+                btnScore.className = "px-3 py-1 text-xs font-bold rounded bg-blue-600 text-white";
+                btnDash.className = "px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white";
+            } else {
+                btnDash.className = "px-3 py-1 text-xs font-bold rounded bg-blue-600 text-white";
+                btnScore.className = "px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white";
+                loadDashboard(); // Refresh data
+            }
+        }
+
+        function updateHeader() { 
             const m = document.getElementById('repMonth').value;
             const y = document.getElementById('repYear').value;
-            document.getElementById('dispPeriod').innerText = `${m} ${y}`;
+            document.getElementById('dispPeriod').innerText = `${m.toUpperCase()} ${y}`;
         }
 
-        function initChart() {
-            try {
-                const ctx = document.getElementById('taskChart').getContext('2d');
-                taskChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: ['Total', 'Completed', 'Overdue'],
-                        datasets: [{
-                            label: 'Tasks',
-                            data: [0, 0, 0],
-                            backgroundColor: ['#3b82f6', '#22c55e', '#ef4444'],
-                            borderRadius: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } }
+        // --- FILE UPLOAD HANDLER ---
+        document.getElementById('multiUpload').addEventListener('change', async function(e) {
+            const files = Array.from(e.target.files);
+            
+            for (const file of files) {
+                if (file.name.toLowerCase().endsWith('.csv')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                        globalTasks = XLSX.utils.sheet_to_json(sheet);
+                        
+                        const sel = document.getElementById('staffSelect');
+                        const staff = [...new Set(globalTasks.map(r => r['StaffMemberName']).filter(s => s))];
+                        sel.innerHTML = '<option value="">Select Staff Member</option>';
+                        staff.forEach(s => { 
+                            const opt = document.createElement('option');
+                            opt.value = s; opt.innerText = s;
+                            sel.appendChild(opt); 
+                        });
+                        sel.disabled = false;
+                        if(staff.length === 1) { sel.value = staff[0]; loadStaffData(); }
+                    };
+                    reader.readAsArrayBuffer(file);
+                } 
+                else if (file.name.toLowerCase().endsWith('.pdf')) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                    let fullText = "";
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        fullText += textContent.items.map(item => item.str).join(" ");
                     }
-                });
-            } catch(e){ console.warn("Chart init fail"); }
-        }
 
-        // --- 3. FILE READER (STABLE v20 CORE) ---
-        document.getElementById('csvFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if(!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
+                    // Regex for "Completed ... 64" and "Worked on ... 16"
+                    const completedMatch = fullText.match(/Completed\s+(\d+)\s+(\d+)/);
+                    const workedMatch = fullText.match(/Worked on\s+(\d+)\s+(\d+)/);
+                    const totalMatch = fullText.match(/Total:\s*(\d+)/) || fullText.match(/#Tasks:\s*(\d+)/);
 
-                summaryOverdue = 0;
-                let foundOverdue = false;
-                for(let i=0; i<Math.min(rows.length, 25); i++) {
-                    const r = rows[i];
-                    if(!r) continue;
-                    for(let j=0; j<r.length; j++) {
-                        if(r[j] && r[j].toString().trim().toLowerCase() === 'overdue') {
-                            for(let k=1; k<=5; k++) {
-                                if(rows[i+k] && rows[i+k][j] !== undefined) {
-                                    let val = parseInt(rows[i+k][j]);
-                                    if(!isNaN(val)) { summaryOverdue = val; foundOverdue = true; break; }
-                                }
-                            }
-                        }
-                    }
-                    if(foundOverdue) break;
+                    let totalOverdue = 0;
+                    if (completedMatch && completedMatch[2]) totalOverdue += parseInt(completedMatch[2]);
+                    if (workedMatch && workedMatch[2]) totalOverdue += parseInt(workedMatch[2]);
+                    
+                    let totalTasks = 0;
+                    if (totalMatch && totalMatch[1]) totalTasks = parseInt(totalMatch[1]);
+
+                    if (totalTasks > 0) document.getElementById('inpTasks').value = totalTasks;
+                    if (totalOverdue > 0) document.getElementById('inpLate').value = totalOverdue;
+                    runCalc();
                 }
-                
-                document.getElementById('debugLate').innerText = foundOverdue ? `✓ Auto-detected: ${summaryOverdue}` : "Summary not found (Default 0)";
-
-                let detectedStaff = [];
-                const keywords = ["finance", "leasing", "maintenance", "delinquency", "property manager", "dept"];
-                for(let i=0; i<Math.min(rows.length, 20); i++) {
-                    const r = rows[i];
-                    if(r && r[0]) {
-                        let txt = r[0].toString().trim();
-                        let low = txt.toLowerCase();
-                        if(txt.length > 3 && keywords.some(k => low.includes(k)) && !low.includes("task")) {
-                            detectedStaff.push(txt);
-                        }
-                    }
-                }
-
-                let headerRow = -1;
-                for(let i=0; i<Math.min(rows.length, 100); i++) {
-                    const str = JSON.stringify(rows[i]).toLowerCase();
-                    if(str.includes("task id") || (str.includes("vendors") || str.includes("assigned"))) {
-                        headerRow = i;
-                        break;
-                    }
-                }
-
-                if(headerRow === -1) { alert("Could not detect task table."); return; }
-                rawData = XLSX.utils.sheet_to_json(sheet, {range: headerRow});
-                populateStaff(detectedStaff);
-            };
-            reader.readAsArrayBuffer(file);
+            }
         });
 
-        function populateStaff(headers) {
-            const sel = document.getElementById('staffSelect');
-            sel.innerHTML = '';
-            if(headers.length > 0) {
-                const g1 = document.createElement('optgroup');
-                g1.label = "Report Subject";
-                headers.forEach(h => {
-                    const opt = document.createElement('option');
-                    opt.value = "HEADER:" + h; opt.innerText = h; opt.selected = true;
-                    g1.appendChild(opt);
-                });
-                sel.appendChild(g1);
-            }
-            const g2 = document.createElement('optgroup');
-            g2.label = "Task Vendors";
-            const vendors = new Set();
-            rawData.forEach(r => {
-                let v = r['Vendors'] || r['vendors'] || r['Assigned'] || r['assigned'];
-                if(v && v !== '--') vendors.add(v);
-            });
-            Array.from(vendors).sort().forEach(v => {
-                const opt = document.createElement('option');
-                opt.value = v; opt.innerText = v;
-                g2.appendChild(opt);
-            });
-            sel.appendChild(g2);
-            sel.disabled = false;
-            sel.classList.remove('bg-gray-200', 'cursor-not-allowed');
-            setTimeout(loadStaffData, 200);
-        }
-
         function loadStaffData() {
-            const val = document.getElementById('staffSelect').value;
-            if(!val) return;
-            let tasks = 0;
-            let late = 0;
-            if(val.startsWith("HEADER:")) {
-                let name = val.split(":")[1];
+            const name = document.getElementById('staffSelect').value;
+            if (name) {
                 document.getElementById('dispName').value = name;
-                tasks = rawData.length;
-                late = summaryOverdue; 
-            } else {
-                document.getElementById('dispName').value = val;
-                const filtered = rawData.filter(r => {
-                    let v = r['Vendors'] || r['vendors'] || r['Assigned'] || r['assigned'];
-                    return v === val;
-                });
-                tasks = filtered.length;
-                late = 0; 
+                const csvCount = globalTasks.filter(r => r['StaffMemberName'] === name).length;
+                // Only overwrite if input is empty/zero
+                if (!document.getElementById('inpTasks').value || document.getElementById('inpTasks').value == "0") {
+                    document.getElementById('inpTasks').value = csvCount;
+                }
+                runCalc();
             }
-            document.getElementById('inpTasks').value = tasks;
-            document.getElementById('inpLate').value = late;
-            runCalc();
         }
 
-        // --- 4. CALCULATION ---
         function runCalc() {
-            const role = document.getElementById('roleSelect').value;
-            const targetTPH = STANDARDS[role] ? STANDARDS[role].tph : 1.5;
-            document.getElementById('tphTargetDisplay').innerText = targetTPH.toFixed(1);
-            
-            const rate = parseFloat(document.getElementById('hourlyRate').value) || 0;
+            const rate = 8.00;
             const tasks = parseFloat(document.getElementById('inpTasks').value) || 0;
             const hours = parseFloat(document.getElementById('inpHours').value) || 160;
             const late = parseFloat(document.getElementById('inpLate').value) || 0;
+            
+            // Audit
+            const tAud = parseFloat(document.getElementById('totalAudits').value) || 0;
+            const cAud = parseFloat(document.getElementById('correctAudits').value) || 0;
+            const aPct = tAud > 0 ? (cAud / tAud) * 100 : 0;
+            document.getElementById('auditPct').innerText = aPct.toFixed(1) + "%";
 
             // Metrics
-            const tph = hours > 0 ? (tasks/hours) : 0;
+            const targetTPH = STANDARDS[document.getElementById('roleSelect').value] || 1.5;
+            document.getElementById('tphTargetDisplay').innerText = targetTPH;
+            const tph = hours > 0 ? (tasks / hours) : 0;
             document.getElementById('resTPH').innerText = tph.toFixed(2);
+            
+            const tPct = tasks > 0 ? ((tasks - late) / tasks) * 100 : 100;
+            document.getElementById('resTime').innerText = tPct.toFixed(1);
+
+            // Pass/Fail
             const passTPH = tph >= targetTPH;
+            const passTime = tPct >= 99.0;
+            const passAudit = tAud > 0 ? aPct >= 99.0 : true;
+            const qFlags = document.querySelectorAll('.q-check:checked').length;
+            const bFlags = document.querySelectorAll('.b-check:checked').length;
+            const passQual = qFlags === 0;
+            const passBeh = bFlags === 0;
+
             setBadge('badgeTPH', passTPH);
-
-            const onTime = Math.max(0, tasks - late);
-            const pct = tasks > 0 ? (onTime / tasks) * 100 : 100;
-            document.getElementById('resTime').innerText = pct.toFixed(1);
-            document.getElementById('resLate').innerText = late;
-            const passTime = pct >= 99.0;
             setBadge('badgeTime', passTime);
-
-            const qErr = document.querySelectorAll('.q-check:checked').length;
-            const passQual = qErr === 0;
-            setBadge('badgeQual', passQual);
-
-            const bErr = document.querySelectorAll('.b-check:checked').length;
-            const passBeh = bErr === 0;
-            setBadge('badgeBeh', passBeh);
+            
+            const badgeAudit = document.getElementById('badgeAudit');
+            if (tAud === 0) {
+                badgeAudit.className = "px-2 py-0.5 rounded text-[8px] font-bold badge-wait";
+                badgeAudit.innerText = "NO DATA";
+            } else {
+                badgeAudit.className = passAudit ? "px-2 py-0.5 rounded text-[8px] font-bold badge-pass" : "px-2 py-0.5 rounded text-[8px] font-bold badge-fail";
+                badgeAudit.innerText = passAudit ? "PASS" : "FAIL";
+            }
 
             // Bonus
             let points = 0;
-            if(passTPH) points++; if(passTime) points++; if(passQual) points++; if(passBeh) points++;
+            if (passTPH) points++;
+            if (passTime) points++;
+            if (passQual) points++;
+            if (passBeh) points++;
+            
             document.getElementById('pointsMet').innerText = points;
-
             const monthlyPot = rate * 3; 
             const earned = (monthlyPot / 4) * points;
             document.getElementById('dispBonus').innerText = "$" + earned.toFixed(2);
 
-            const m1 = parseFloat(document.getElementById('bonusM1').value) || 0;
-            const m2 = parseFloat(document.getElementById('bonusM2').value) || 0;
-            const totalQ = m1 + m2 + earned;
-            document.getElementById('totalQuarterlyPayout').innerText = "$" + totalQ.toFixed(2);
-
-            // Chart
-            if(taskChart) {
-                taskChart.data.datasets[0].data = [tasks, onTime, late];
-                taskChart.update();
-                document.getElementById('chartTotal').innerText = tasks;
-                document.getElementById('chartOverdue').innerText = late;
-            }
-
-            // SMART COACHING SCRIPT (New Logic)
-            let script = "";
-            const t = TIPS[role] || TIPS["Miscellaneous"];
+            // UPDATED COACHING SCRIPT
+            let script = `<p class="mb-2"><strong>Performance Summary:</strong> Staff member has earned <strong>$${earned.toFixed(2)}</strong> (meeting ${points}/4 standards).</p>`;
             
-            if(points === 4) {
-                 script = `<p class="text-green-700 font-bold mb-2">Excellent Performance!</p> "Congratulations on a perfect score this month. You have met all standards for Production, Timeliness, Quality, and Behavior. Keep up the great work leading by example."`;
+            if (points === 4 && passAudit) {
+                script += `<p class="text-green-700 font-bold"><i class="fas fa-check-circle"></i> Excellent Performance!</p><p>You have met all production, timeliness, and quality standards for this period.</p>`;
             } else {
-                 script = `<p class="text-red-700 font-bold mb-2">Action Plan for ${role}:</p><ul class="list-disc ml-4 mt-1 space-y-2">`;
-                 if(!passTPH) script += `<li><strong>Production (${tph.toFixed(2)}):</strong> ${t.prod}</li>`;
-                 if(!passTime) script += `<li><strong>Timeliness (${late} overdue):</strong> ${t.time}</li>`;
-                 if(!passQual) script += `<li><strong>Quality Issues:</strong> ${t.qual}</li>`;
-                 if(!passBeh) script += `<li><strong>Behavior Issues:</strong> Review the Employee Handbook regarding the flagged issue.</li>`;
-                 script += `</ul>`;
+                script += `<p class="font-bold text-slate-700 mb-1">Areas for Improvement:</p><ul class="list-disc ml-5 space-y-1">`;
+                if (!passTPH) script += `<li><strong>Production Efficiency:</strong> Your TPH of ${tph.toFixed(2)} is below the target of ${targetTPH}. Focus on batch-processing tasks.</li>`;
+                
+                // UPDATED TIMELINESS TEXT
+                if (!passTime) script += `<li><strong>Timeliness:</strong> You achieved ${tPct.toFixed(1)}% on-time (Target: 99%). There were <strong>${late} overdue tasks</strong>. Please be proactive and plan to meet all deadlines timely by forecasting.</li>`;
+                
+                if (!passQual) script += `<li><strong>Quality Control:</strong> ${qFlags} manual flags were noted (Rework/Errors). Please double-check data.</li>`;
+                if (!passBeh) script += `<li><strong>Professionalism:</strong> ${bFlags} policy/attendance flags recorded.</li>`;
+                if (!passAudit && tAud > 0) script += `<li><strong>Audit Compliance:</strong> Audit accuracy was ${aPct.toFixed(1)}% (Target: 99%).</li>`;
+                script += `</ul>`;
             }
             document.getElementById('scriptBox').innerHTML = script;
         }
 
         function setBadge(id, pass) {
             const el = document.getElementById(id);
-            if(pass) { el.className = "px-3 py-1 rounded-full text-[10px] font-bold badge-pass"; el.innerText = "MET STANDARD"; }
-            else { el.className = "px-3 py-1 rounded-full text-[10px] font-bold badge-fail"; el.innerText = "MISSED"; }
+            if (pass) {
+                el.className = "text-[8px] px-2 py-0.5 rounded font-bold badge-pass";
+                el.innerText = "MET STANDARD";
+            } else {
+                el.className = "text-[8px] px-2 py-0.5 rounded font-bold badge-fail";
+                el.innerText = "MISSED";
+            }
         }
 
-        // --- EMAIL GENERATOR (UPDATED TEMPLATE) ---
-        function openEmailModal() {
-            const name = document.getElementById('dispName').value;
-            const m = document.getElementById('repMonth');
-            const mIndex = m.selectedIndex; 
-            const q = Math.ceil((mIndex + 1) / 3) || 1; 
-            const y = document.getElementById('repYear').value;
-            const total = document.getElementById('totalQuarterlyPayout').innerText;
-            
-            const quarter = `${q}Q${y.slice(-2)}`; 
-            
-            const subject = `PropertyWize Performance Incentive Bonus – ${quarter}`;
-            document.getElementById('emailSubject').value = subject;
+        // --- DASHBOARD FUNCTIONS (LocalStorage) ---
+        function saveRecord() {
+            const record = {
+                id: Date.now(),
+                dateSaved: new Date().toLocaleDateString(),
+                staff: document.getElementById('dispName').value,
+                period: document.getElementById('dispPeriod').innerText,
+                tph: document.getElementById('resTPH').innerText,
+                timePct: document.getElementById('resTime').innerText,
+                bonus: document.getElementById('dispBonus').innerText,
+                staffSig: document.getElementById('staffSig').value ? "Yes" : "No",
+                opsSig: document.getElementById('opsSig').value ? "Yes" : "No"
+            };
 
-            const body = `PropertyWize Performance Incentive Bonus – ${quarter}\n\n` +
-                `Dear ${name},\n\n` +
-                `Congratulations and thank you for your continued effort and commitment to excellence at PropertyWize. As we work together toward becoming the industry leader in property management and truly differentiating PropertyWize through superior service, your contributions do not go unnoticed.\n\n` +
-                `Based on your performance and demonstrated behaviors during ${quarter}, you have earned a Performance Incentive Bonus of ${total} in recognition of your impact, professionalism, and alignment with our standards.\n\n` +
-                `You will receive this bonus during the next scheduled payout cycle.\n\n` +
-                `We appreciate your dedication, teamwork, and commitment to growing with us. Keep leading by example.\n\n` +
-                `Sincerely,\nShanicka Sudler & Michelle Yang\nEPMs of PropertyWize`;
-
-            document.getElementById('emailText').value = body;
-            document.getElementById('emailModal').classList.remove('hidden');
+            let db = JSON.parse(localStorage.getItem('pw_scorecards') || "[]");
+            db.push(record);
+            localStorage.setItem('pw_scorecards', JSON.stringify(db));
+            alert("Scorecard Saved to Dashboard!");
+            loadDashboard();
         }
 
-        function copyEmail() {
-            const t = document.getElementById('emailText');
-            t.select(); document.execCommand('copy');
-            alert("Email copied!");
+        function loadDashboard() {
+            let db = JSON.parse(localStorage.getItem('pw_scorecards') || "[]");
+            const tbody = document.getElementById('dashboardBody');
+            tbody.innerHTML = "";
+            
+            if(db.length === 0) {
+                document.getElementById('emptyMsg').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('emptyMsg').classList.add('hidden');
+
+            db.forEach(rec => {
+                const tr = document.createElement('tr');
+                tr.className = "db-row";
+                tr.innerHTML = `
+                    <td>${rec.dateSaved}</td>
+                    <td class="font-bold text-slate-700">${rec.staff}</td>
+                    <td>${rec.period}</td>
+                    <td>${rec.tph}</td>
+                    <td>${rec.timePct}%</td>
+                    <td class="text-green-600 font-bold">${rec.bonus}</td>
+                    <td>${rec.staffSig === "Yes" ? '<span class="text-green-600"><i class="fas fa-check"></i></span>' : '<span class="text-red-400">Missing</span>'}</td>
+                    <td>${rec.opsSig === "Yes" ? '<span class="text-green-600"><i class="fas fa-check"></i></span>' : '<span class="text-red-400">Missing</span>'}</td>
+                    <td><button onclick="deleteRecord(${rec.id})" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function deleteRecord(id) {
+            if(!confirm("Are you sure you want to delete this record?")) return;
+            let db = JSON.parse(localStorage.getItem('pw_scorecards') || "[]");
+            db = db.filter(r => r.id !== id);
+            localStorage.setItem('pw_scorecards', JSON.stringify(db));
+            loadDashboard();
+        }
+
+        function clearDashboard() {
+            if(!confirm("Delete ALL records?")) return;
+            localStorage.removeItem('pw_scorecards');
+            loadDashboard();
+        }
+
+        function savePDF() {
+            const element = document.getElementById('printArea');
+            const name = document.getElementById('dispName').value.replace(/[^a-z0-9]/gi, '_');
+            const opt = {
+                margin: 0,
+                filename: `Scorecard_${name}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
         }
     </script>
 </body>
